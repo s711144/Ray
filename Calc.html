@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>報酬率與經過天數計算器</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.17.0/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            margin-top: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #ddd;
+        }
+        input[type="text"], input[type="date"] {
+            width: 100%;
+            box-sizing: border-box;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            padding: 5px;
+            text-align: center;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .action-buttons button, .add-row-btn {
+            display: inline-block;
+            width: 150px;
+            padding: 10px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            text-align: center;
+            text-decoration: none;
+        }
+        .add-row-btn {
+            background-color: #28a745;
+        }
+        .add-row-btn:hover {
+            background-color: #218838;
+        }
+        .export-btn {
+            background-color: #007bff;
+        }
+        .export-btn:hover {
+            background-color: #0056b3;
+        }
+        .delete-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .delete-btn:hover {
+            background-color: #c82333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>報酬率與經過天數計算器</h1>
+    <p>請在表格中輸入資料，報酬率和經過天數將自動計算。</p>
+
+    <div class="action-buttons">
+        <button class="export-btn" onclick="exportToExcel()">匯出為 Excel</button>
+    </div>
+    
+    <h2>高點計算到低點 (下跌報酬率)</h2>
+    <p>計算從高點下跌至低點的報酬率與經過天數。</p>
+    <table id="table-high-to-low">
+        <thead>
+            <tr>
+                <th>指數</th>
+                <th>高點日期</th>
+                <th>高點價位</th>
+                <th>低點日期</th>
+                <th>低點價位</th>
+                <th>報酬率</th>
+                <th>經過天數</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="high-to-low-body">
+            <tr>
+                <td><input type="text" value="" placeholder="例如: S&P500"></td>
+                <td><input type="date" onchange="calculate(this)"></td>
+                <td><input type="text" oninput="calculate(this)" placeholder="例如: 3000"></td>
+                <td><input type="date" onchange="calculate(this)"></td>
+                <td><input type="text" oninput="calculate(this)" placeholder="例如: 2500"></td>
+                <td><span class="result-rate"></span></td>
+                <td><span class="result-days"></span></td>
+                <td><button class="delete-btn" onclick="deleteRow(this)">刪除</button></td>
+            </tr>
+        </tbody>
+    </table>
+    <button class="add-row-btn" onclick="addRow('high-to-low')">新增一列</button>
+    
+    <br><br>
+
+    <h2>低點計算到高點 (上漲報酬率)</h2>
+    <p>計算從低點上漲至高點的報酬率與經過天數。</p>
+    <table id="table-low-to-high">
+        <thead>
+            <tr>
+                <th>指數</th>
+                <th>低點日期</th>
+                <th>低點價位</th>
+                <th>高點日期</th>
+                <th>高點價位</th>
+                <th>報酬率</th>
+                <th>經過天數</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="low-to-high-body">
+            <tr>
+                <td><input type="text" value="" placeholder="例如: S&P500"></td>
+                <td><input type="date" onchange="calculate(this)"></td>
+                <td><input type="text" oninput="calculate(this)" placeholder="例如: 2500"></td>
+                <td><input type="date" onchange="calculate(this)"></td>
+                <td><input type="text" oninput="calculate(this)" placeholder="例如: 3000"></td>
+                <td><span class="result-rate"></span></td>
+                <td><span class="result-days"></span></td>
+                <td><button class="delete-btn" onclick="deleteRow(this)">刪除</button></td>
+            </tr>
+        </tbody>
+    </table>
+    <button class="add-row-btn" onclick="addRow('low-to-high')">新增一列</button>
+</div>
+
+<script>
+    function calculate(element) {
+        const row = element.closest('tr');
+        const tableId = element.closest('table').id;
+        
+        let startDateInput, startPriceInput, endDateInput, endPriceInput;
+
+        if (tableId === 'table-high-to-low') {
+            startDateInput = row.querySelector('td:nth-child(2) input'); // 高點日期
+            startPriceInput = row.querySelector('td:nth-child(3) input'); // 高點價位
+            endDateInput = row.querySelector('td:nth-child(4) input'); // 低點日期
+            endPriceInput = row.querySelector('td:nth-child(5) input'); // 低點價位
+        } else { // table-low-to-high
+            startDateInput = row.querySelector('td:nth-child(2) input'); // 低點日期
+            startPriceInput = row.querySelector('td:nth-child(3) input'); // 低點價位
+            endDateInput = row.querySelector('td:nth-child(4) input'); // 高點日期
+            endPriceInput = row.querySelector('td:nth-child(5) input'); // 高點價位
+        }
+
+        const resultRateSpan = row.querySelector('.result-rate');
+        const resultDaysSpan = row.querySelector('.result-days');
+
+        const startDate = new Date(startDateInput.value);
+        const startPrice = parseFloat(startPriceInput.value);
+        const endDate = new Date(endDateInput.value);
+        const endPrice = parseFloat(endPriceInput.value);
+
+        // 計算經過天數
+        if (startDateInput.value && endDateInput.value) {
+            // 確保 endDate 晚於 startDate，否則不計算
+            if (startDate < endDate) {
+                const timeDiff = endDate.getTime() - startDate.getTime();
+                const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                resultDaysSpan.textContent = daysDiff;
+            } else {
+                resultDaysSpan.textContent = '日期錯誤';
+            }
+        } else {
+            resultDaysSpan.textContent = '';
+        }
+
+        // 計算報酬率
+        if (!isNaN(startPrice) && !isNaN(endPrice) && startPrice !== 0) {
+            const returnRate = ((endPrice - startPrice) / startPrice) * 100;
+            resultRateSpan.textContent = returnRate.toFixed(2) + '%';
+        } else {
+            resultRateSpan.textContent = '';
+        }
+    }
+
+    function addRow(type) {
+        const tableBodyId = type === 'high-to-low' ? 'high-to-low-body' : 'low-to-high-body';
+        const tableBody = document.getElementById(tableBodyId);
+        const newRow = document.createElement('tr');
+        
+        let rowContent;
+        if (type === 'high-to-low') {
+            rowContent = `
+                <td><input type="text" value="" placeholder="例如: S&P500"></td>
+                <td><input type="date" onchange="calculate(this)"></td>
+                <td><input type="text" oninput="calculate(this)" placeholder="例如: 3000"></td>
+                <td><input type="date" onchange="calculate(this)"></td>
+                <td><input type="text" oninput="calculate(this)" placeholder="例如: 2500"></td>
+                <td><span class="result-rate"></span></td>
+                <td><span class="result-days"></span></td>
+                <td><button class="delete-btn" onclick="deleteRow(this)">刪除</button></td>
+            `;
+        } else { // low-to-high
+            rowContent = `
+                <td><input type="text" value="" placeholder="例如: S&P500"></td>
+                <td><input type="date" onchange="calculate(this)"></td>
+                <td><input type="text" oninput="calculate(this)" placeholder="例如: 2500"></td>
+                <td><input type="date" onchange="calculate(this)"></td>
+                <td><input type="text" oninput="calculate(this)" placeholder="例如: 3000"></td>
+                <td><span class="result-rate"></span></td>
+                <td><span class="result-days"></span></td>
+                <td><button class="delete-btn" onclick="deleteRow(this)">刪除</button></td>
+            `;
+        }
+        
+        newRow.innerHTML = rowContent;
+        tableBody.appendChild(newRow);
+    }
+    
+    function deleteRow(button) {
+        const row = button.closest('tr');
+        row.remove();
+    }
+
+    function exportToExcel() {
+        // 取得兩個表格的資料
+        const table1 = document.getElementById('table-high-to-low');
+        const table2 = document.getElementById('table-low-to-high');
+
+        // 將表格轉換為陣列
+        const data1 = tableToArray(table1, '高點到低點');
+        const data2 = tableToArray(table2, '低點到高點');
+
+        // 創建工作簿
+        const wb = XLSX.utils.book_new();
+
+        // 創建工作表並添加到工作簿
+        const ws1 = XLSX.utils.aoa_to_sheet(data1);
+        XLSX.utils.book_append_sheet(wb, ws1, "高點到低點");
+
+        const ws2 = XLSX.utils.aoa_to_sheet(data2);
+        XLSX.utils.book_append_sheet(wb, ws2, "低點到高點");
+
+        // 將工作簿寫入為 Excel 檔案並下載
+        XLSX.writeFile(wb, '報酬率計算結果.xlsx');
+    }
+
+    function tableToArray(table, type) {
+        const rows = table.querySelectorAll('tr');
+        const data = [];
+        
+        // 取得標題列
+        const headerRow = rows[0];
+        const headerCells = headerRow.querySelectorAll('th');
+        const header = Array.from(headerCells).map(cell => cell.textContent);
+        
+        // 根據類型調整標題
+        if (type === '高點到低點') {
+            header.splice(0, 0, '計算類型');
+            header.pop(); // 移除「操作」欄位
+        } else { // 低點到高點
+            header.splice(0, 0, '計算類型');
+            header.pop(); // 移除「操作」欄位
+        }
+        
+        data.push(header);
+
+        // 取得資料列
+        for (let i = 1; i < rows.length; i++) {
+            const row = rows[i];
+            const cells = row.querySelectorAll('td');
+            const rowData = [];
+            
+            // 根據類型插入類型欄位
+            rowData.push(type);
+
+            for (let j = 0; j < cells.length - 1; j++) { // 忽略最後的操作欄位
+                const cell = cells[j];
+                const input = cell.querySelector('input');
+                const span = cell.querySelector('span');
+
+                if (input) {
+                    rowData.push(input.value);
+                } else if (span) {
+                    rowData.push(span.textContent);
+                } else {
+                    rowData.push(cell.textContent);
+                }
+            }
+            // 確保資料列不為空
+            if (rowData.some(cell => cell.trim() !== '')) {
+                data.push(rowData);
+            }
+        }
+        return data;
+    }
+</script>
+
+</body>
+</html>
